@@ -1,0 +1,31 @@
+Instructions on how to build and install the Polhemus Terminal Tracker (PiTerm).  
+
+The Polhemus Terminal Tracker is a GTK+ application that requires GTK+-3.0 or greater.  In order to build and install this application a user may have to acquire the GTK+ development package.  This should be obtained through your Linux distribution package manager if possible.  The package will probably end with -dev (Debian,Ubuntu) or -devel (Red Hat,Fedora).  eg. libgtk3.0-dev or gtk+-devel.  If it is not possible to get a distribution package then GTK can be obtained at http://www.gtk.org/download.html.
+
+In addition to the GTK library the PiTerm is dependent upon libusb-1.0 and fxload.  Again, both of these should be available through your Linux distribution.  If not, they are readily available on the web.  Please note that libusb-1.0 is not backwards compatible with previous versions of libusb.  libusb-1.0 is required to build PiTerm, and fxload is required for USB tracker firmware to be properly downloaded upon tracker connection.  fxload should be installed to /sbin.
+
+
+After the GTK development, libusb-1.0, and fxload packages have been intalled proceed with the installation procedure below.
+
+
+Install the Polhemus Terminal Tracker:
+
+
+1.  Copy piterm-1.0.x.tar.gz to a directory of your choice. Unzip with 'tar -xvzf piterm-1.0.x.tar.gz'.
+
+2.  cd to the directory where the PiTerm files were just extracted to (piterm-1.0.x).
+
+3.  run ./configure; then make; then 'make install sysconfdir=/etc'.  You will need root authority to run 'make install'.  This will build the source code and install it on your system.  Invoke the application by typing 'PiTerm' at the command prompt.  See the INSTALL file for more detailed information.
+
+The following points/steps refer to setting up a Polhemus Tracker to communicate over USB.
+
+1.  Some Polhemus trackers download USB firmware from the host when they are connected.  This firmware should have been installed to /usr/local/share/PolhemusUsb. This firmware is not part of the Polhemus Tracker Terminal Release and therefore not governed under the GNU Public license.  It is provided along with this release to allow USB communications with Polhemus trackers.
+
+2.  A rules file has been installed to /etc/udev/rules.d.  The rules file notifies the system which USB firmware to download to the tracker that was just plugged in.  If you decide to change the location of the USB firmware files you must change the rule file (90-Polhemus_trkr.rules) to reflect the change.  This rules files assumes that fxload is located in /sbin.  If this is not the case, again the rules file will have to modified to reflect this change.  Be very careful when modifying this file, any syntax error can cause a tracker to not operate properly over USB.  This file should not be renamed.
+
+
+
+After following these steps you should be able to communicate with Polhemus trackers using the PiTerm over USB or RS232. However you may have to change the permissions to allow a non-super user to open the RS232 port.
+eg. as root:  chmod 0666 /dev/ttyS0
+
+
