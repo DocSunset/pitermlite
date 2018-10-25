@@ -34,8 +34,9 @@ along with Tracker Terminal.  If not, see <http://www.gnu.org/licenses/>.
 #include <libusb-1.0/libusb.h>
 #include <termios.h>
 
-enum{NO_CNX=-1,USB_CNX,RS232_CNX};
+enum {NO_CNX=-1,USB_CNX,RS232_CNX};
 
+struct USB_PARAMS {int vid, pid, writeEp, readEp;};
 
 class PiTracker {
 
@@ -46,6 +47,7 @@ class PiTracker {
   ~PiTracker();
 
   int UsbConnect(int Vid,int Pid,int writeEp, int readEp);
+  int UsbConnect(USB_PARAMS p);
   int Rs232Connect(const char* port,int baud=115200);
   int WriteTrkData(void* data,int len);
   int ReadTrkData(void* buf,int maxLen);

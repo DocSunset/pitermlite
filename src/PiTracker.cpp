@@ -54,6 +54,11 @@ PiTracker::~PiTracker()
     CloseTrk();
 }
 
+int PiTracker::UsbConnect(USB_PARAMS p)
+{
+  return UsbConnect(p.vid, p.pid, p.writeEp, p.readEp);
+}
+
 int PiTracker::UsbConnect(int Vid, int Pid, int writeEp, int readEp)
 {
   int r = libusb_init(NULL);
