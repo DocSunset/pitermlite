@@ -27,127 +27,113 @@ along with Tracker Terminal.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "PiTracker.h"
-#include <pthread.h>
 #include "PingPong.h"
 #include <string.h>
+#include <thread>
 
 
-PingPong::PingPong(){
-  for (int i=0;i<NUMBUFS;i++){
-    m_buf[i]=NULL;
-    m_len[i]=0;
+PingPong::PingPong()
+{
+  for (int i = 0; i < NUMBUFS; i++)
+  {
+    m_buf[i] = NULL;
+    m_len[i] = 0;
   }
-  m_readInd=m_writeInd=m_size=0;
-
-  // init the mutex to synchronize reads and writes between different threads
-  pthread_mutex_init(&m_mutex,NULL);
+  m_readInd = m_writeInd = m_size = 0;
 }
 
-PingPong::~PingPong(){
-
-  // need to clean up 
-  for (int i=0;i<NUMBUFS;i++){
-    if (m_buf[i])
-      delete[] m_buf[i];
-  }
+PingPong::~PingPong()
+{
+  for (int i = 0; i < NUMBUFS; i++) if (m_buf[i]) delete[] m_buf[i];
 }
 
 // create buffers
-int PingPong::InitPingPong(int bufSize){
-
-  int memerr=0;
-  for (int i=0;i<NUMBUFS;i++){
-    m_buf[i]=new BYTE[bufSize];
-    if (!m_buf[i]){
-      memerr=1;
+int PingPong::InitPingPong(int bufSize)
+{
+  int memerr = 0;
+  for (int i = 0; i < NUMBUFS; i++)
+  {
+    m_buf[i] = new BYTE[bufSize];
+    if (!m_buf[i])
+    {
+      memerr = 1;
       break;
     }
   }
-  if (memerr){
-    for (int i=0;i<NUMBUFS;i++){
-      if (m_buf[i]){
-	delete[] m_buf[i];
-	m_buf[i]=NULL;
+
+  if (memerr)
+  {
+    for (int i = 0; i < NUMBUFS; i++)
+    {
+      if (m_buf[i])
+      {
+	      delete[] m_buf[i];
+	      m_buf[i] = NULL;
       }
     }
     return -1;
   }
 
-
-  m_size=bufSize;
+  m_size = bufSize;
   return 0;
 }
 
-int PingPong::GetBufferSize(){
-  return m_size;
-}
+int PingPong::GetBufferSize() {return m_size;}
 
-// return number of bytes available in read buffer
-int PingPong::IsDataAvail(){
-
-  return m_len[m_readInd];
-}
-
-//#include <stdio.h>
+int PingPong::IsDataAvail() {return m_len[m_readInd];}
 
 // read from the read buffer
-int PingPong::ReadPP(BYTE* buf){
+int PingPong::ReadPP(BYTE* buf)
+{
+  std::lock_guard<std::mutex> lock(m_mutex);
+  int len = m_len[m_readInd];
 
-  pthread_mutex_lock(&m_mutex);
-  int len=m_len[m_readInd];
-
-  if (len==0){
-    pthread_mutex_unlock(&m_mutex);
+  if (len == 0)
+  {
     return 0;
   }
 
-  memcpy(buf,m_buf[m_readInd],len);
-  m_len[m_readInd]=0;
-  //   printf("Read %d bytes from buffer %d\n",len,m_readInd);
+  memcpy(buf, m_buf[m_readInd], len);
+
+  m_len[m_readInd] = 0;
   IncrInd(m_readInd);
-
-  pthread_mutex_unlock(&m_mutex);
-
   return len;
 }
 
-
 // write to the write buffer
-int PingPong::WritePP(BYTE* buf,int len){
+int PingPong::WritePP(BYTE* buf, int len)
+{
+  int rv = 0;
 
-  int rv=0;
+  std::lock_guard<std::mutex> lock(m_mutex);
 
-  pthread_mutex_lock(&m_mutex);
+  if(len > m_size)
+    len = m_size;
 
-  if(len>m_size)
-    len=m_size;
-
-  if (m_len[m_writeInd]==0){  // don't overwrite unread data
-    memcpy(m_buf[m_writeInd],buf,len);
-    m_len[m_writeInd]=len;
-    //   printf("Wrote %d bytes to buffer %d\n",len,m_writeInd);
+  if (m_len[m_writeInd] == 0)
+  {  // don't overwrite unread data
+    memcpy(m_buf[m_writeInd], buf, len);
+    m_len[m_writeInd] = len;
     IncrInd(m_writeInd);
-    rv=len;
+    rv = len;
   }
 
-  pthread_mutex_unlock(&m_mutex);
   return rv;
 }
 
 // increment the index to the next in progression
-void PingPong::IncrInd(int& index){
-
+void PingPong::IncrInd(int& index)
+{
   index++;
-  if (index==NUMBUFS)
-    index=0;
+  if (index == NUMBUFS)
+    index = 0;
 }
 
-void PingPong::ClearBuffers(){
-
-  pthread_mutex_lock(&m_mutex);
-  for (int i=0;i<NUMBUFS;i++)
-    m_len[i]=0;
+void PingPong::ClearBuffers()
+{
+  std::lock_guard<std::mutex> lock(m_mutex);
+  for (int i = 0; i < NUMBUFS; i++)
+    m_len[i] = 0;
   
-  m_readInd=m_writeInd=0;
-  pthread_mutex_unlock(&m_mutex);
+  m_readInd = m_writeInd = 0;
 }

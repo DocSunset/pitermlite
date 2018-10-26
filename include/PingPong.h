@@ -30,6 +30,7 @@ along with Tracker Terminal.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef PINGPONG_H_
 #define PINGPONG_H_
 
+#include <thread>
 #define NUMBUFS   10
 
 class PingPong {
@@ -41,7 +42,7 @@ class PingPong {
   int m_writeInd;
   int m_size;
   int m_len[NUMBUFS];
-  pthread_mutex_t m_mutex;
+  std::mutex m_mutex;
 
   void IncrInd(int& ind);
 

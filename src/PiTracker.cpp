@@ -26,12 +26,12 @@ along with Tracker Terminal.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <termios.h>
-#include <pthread.h>
 #include "PiTracker.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <thread>
 
 #define FT_INT   0x84
 #define FT_PID   0x0002
@@ -45,7 +45,6 @@ PiTracker::PiTracker()
   m_FtContUsb = 0;
   m_isFt = 0;
   m_lastFtCont = 0;
-  pthread_mutex_init(&m_mutex, NULL);
 }
 
 PiTracker::~PiTracker()
@@ -139,13 +138,12 @@ int PiTracker::WriteTrkData(void* data, int len)
 {
   int bw = 0;
 
-  pthread_mutex_lock(&m_mutex);
+  std::lock_guard<std::mutex> lock(m_mutex);
 
   if (m_cnxType == USB_CNX) bw = WriteUsbData(data, len);
   else if (m_cnxType == RS232_CNX) bw = WriteRs232Data(data, len);
   else fprintf(stderr, "No Connection\n");
 
-  pthread_mutex_unlock(&m_mutex);
   return bw;
 }
 
@@ -153,12 +151,11 @@ int PiTracker::ReadTrkData(void* buf, int maxLen)
 {
   int br = 0;
 
-  pthread_mutex_lock(&m_mutex);
+  std::lock_guard<std::mutex> lock(m_mutex);
   if (m_cnxType == USB_CNX) br = ReadUsbData(buf, maxLen);
   else if (m_cnxType == RS232_CNX) br = ReadRs232Data(buf, maxLen);
   else fprintf(stderr, "No Connection\n");
 
-  pthread_mutex_unlock(&m_mutex);
   return br;
 }
 

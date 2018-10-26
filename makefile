@@ -7,7 +7,7 @@ HEADERS = $(patsubst %, $(IDIR)/%.h, $(FILES))
 OBJECTS = $(patsubst %, $(SDIR)/%.o, $(FILES))
 
 CXX = g++
-CXXFLAGS = -Wall -std=c++11
+CXXFLAGS = -Wall -std=c++14
 INCLUDES = -I$(IDIR) 
 LIBS = -lusb-1.0
 

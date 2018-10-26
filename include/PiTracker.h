@@ -33,6 +33,7 @@ along with Tracker Terminal.  If not, see <http://www.gnu.org/licenses/>.
 #define BYTE unsigned char
 #include <libusb-1.0/libusb.h>
 #include <termios.h>
+#include <thread>
 
 enum {NO_CNX=-1,USB_CNX,RS232_CNX};
 
@@ -77,7 +78,7 @@ class PiTracker {
   int m_rs232Port;
   struct termios m_initialAtt;
 
-  pthread_mutex_t m_mutex;
+  std::mutex m_mutex;
 
 
 
