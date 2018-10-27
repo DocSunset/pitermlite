@@ -67,8 +67,7 @@ int PiTracker::UsbConnect(int Vid, int Pid, int writeEp, int readEp)
     return -1;
   }
   m_bCloseUsbLibrary = 1;
-  if (Pid == FT_PID)
-    m_isFt = 1;
+  if (Pid == FT_PID) m_isFt = 1;
 
   m_usbVid = Vid;
   m_usbPid = Pid;
@@ -76,8 +75,7 @@ int PiTracker::UsbConnect(int Vid, int Pid, int writeEp, int readEp)
   m_usbReadEp = readEp;
 
   m_handle = libusb_open_device_with_vid_pid(NULL, m_usbVid, m_usbPid);
-  if (!m_handle)
-    return -1;
+  if (!m_handle) return -1;
 
   m_cnxType = USB_CNX;
 
