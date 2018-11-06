@@ -34,6 +34,7 @@ along with Tracker Terminal.  If not, see <http://www.gnu.org/licenses/>.
 #include <libusb-1.0/libusb.h>
 #include <termios.h>
 #include <thread>
+#include <mutex>
 
 enum {NO_CNX=-1,USB_CNX,RS232_CNX};
 

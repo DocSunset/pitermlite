@@ -2,67 +2,82 @@
 #include <thread>
 #include <chrono>
 #include <string>
+#include <cstring>
+#include <algorithm>
 #include <iostream>
-#include <signal.h>
+const char* version = "version 0.1";
 
-bool runflag = true;
-
-void siginthandler(int sig) { runflag = false; }
-
-int main(int argc, char** argv)
+// polhemus tracker names
+const char* trackerLongNames[NUM_SUPP_TRKS] =
 {
-  signal(SIGINT, siginthandler);
+  "high_speed_liberty",
+  "liberty",
+  "high_speed_patriot",
+  "patriot",
+  "fastrak",
+  "fastrak3"
+};
 
-  ConnectionInfo connectionInfo;
-  bool argsuccess = parseArgs(argc, argv, &connectionInfo);
-  if (!argsuccess)
+const char* trackerShortNames[NUM_SUPP_TRKS] =
+{
+  "hsl",
+  "l",
+  "hsp",
+  "p",
+  "f",
+  "f3"
+};
+
+// usb vid/pids for Polehemus trackers
+const USB_PARAMS usbTrkParams[NUM_SUPP_TRKS] =
+{
+  {0x0f44,0xff20,0x04,0x88},  // Lib HS
+  {0x0f44,0xff12,0x02,0x82},  // Lib
+  {0X0f44,0xef20,0x04,0x88},  // Patriot HS
+  {0x0f44,0xef12,0x02,0x82},  // Patriot
+  {0x0f44,0x0002,0x02,0x82},	// Fastrak
+  {0x0f44,0x0003,0x02,0x84}   // Fastrak 3
+};
+
+bool argExists(char** begin, char** end, const std::string& arg)
+{
+  return std::find(begin, end, arg) != end;
+}
+
+bool parseArgs(int argc, char** argv, ConnectionInfo* info)
+{
+  char** begin = argv;
+  char** end = argv+argc;
+  if (argc == 2)
   {
-    // parseArgs prints its own helpful message
-    return 1;
+    for (int i = 0; i < NUM_SUPP_TRKS; ++i)
+    {
+      if (argExists(begin, end, trackerLongNames[i]) 
+          || argExists(begin, end, trackerShortNames[i]))
+      {
+        info->connectionType = USB_CNX;
+        info->usbParams = usbTrkParams[i];
+        return true;
+      }
+    }
+    if (argExists(begin, end, "-h"))
+    {
+      printHelp(argv);
+      return false;
+    }
+    else
+    {
+      info->connectionType = RS232_CNX;
+      info->port = argv[1];
+      return true;
+    }
   }
-
-  PiTracker tracker;
-  bool connectionsuccess = connectTracker(tracker, connectionInfo);
-  if (!connectionsuccess)
+  else
   {
-    std::cerr << "Error connecting to tracker." << std::endl;
-    return 1;
+    // if execution reaches this point, args were invalid
+    printHelp(argv);
+    return false;
   }
-
-  PingPong buffer; 
-  bool initbuffersuccess = buffer.InitPingPong(BUFFERSIZE);
-  if (!initbuffersuccess)
-  {
-    std::cerr << "Error initializing memory for buffers" << std::endl;
-    return 1;
-  }
-
-  std::cin.tie(nullptr); // so that cin won't try to flush cout
-  bool running = runflag; // local copy is made so that it can be captured
-
-  std::thread readThread([&tracker, &buffer, &running]
-  {
-    waitForResponseFromTracker(tracker);
-    readFromTracker(tracker, buffer, running);
-  });
-  
-  std::thread outputThread([&buffer, &running]
-  {
-    writeToCommandLine(buffer, running);
-  });
-
-  std::thread commandThread([&tracker, &running]
-  {
-    readFromCommandLine(tracker, running);
-  });
-  
-  while (running) running = runflag;
-
-  readThread.join();
-  outputThread.join();
-  commandThread.join();
-  
-  return 0;
 }
 
 void printHelp(char ** argv)
@@ -93,44 +108,6 @@ void printHelp(char ** argv)
   std::cout << std::flush;
 }
 
-bool argExists(char** begin, char** end, const std::string& arg)
-{
-  return std::find(begin, end, arg) != end;
-}
-
-bool parseArgs(int argc, char** argv, ConnectionInfo* info)
-{
-  char** begin = argv;
-  char** end = argv+argc;
-  if (argExists(begin, end, "-h"))
-  {
-    printHelp(argv);
-    return false;
-  }
-  else if (argc == 2)
-  {
-    info->connectionType = RS232_CNX;
-    info->port = argv[1];
-    return true;
-  }
-  else
-  {
-    for (int i = 0; i < NUM_SUPP_TRKS; ++i)
-    {
-      if (argExists(begin, end, trackerLongNames[i]) 
-          || argExists(begin, end, trackerShortNames[i]))
-      {
-        info->connectionType = USB_CNX;
-        info->usbParams = usbTrkParams[i];
-        return true;
-      }
-    }
-  }
-  // if execution reaches this point, no valid args were found
-  printHelp(argv);
-  return false;
-}
-
 bool connectTracker(PiTracker& tracker, const ConnectionInfo& connectionInfo)
 {
   int returncode;
@@ -147,7 +124,7 @@ void waitForResponseFromTracker(PiTracker& tracker)
   BYTE localBuffer[BUFFERSIZE];
   int bytesReceived = 0;
   do { // keep sending an invalid command until a response is received
-    tracker.WriteTrkData((void *)"\r", 1);
+    tracker.WriteTrkData((void *)'\r', 1);
     std::this_thread::sleep_for(std::chrono::seconds(1));
     bytesReceived = tracker.ReadTrkData(localBuffer, BUFFERSIZE);
     } while (bytesReceived == 0);
@@ -190,41 +167,40 @@ void writeToCommandLine(PingPong& buffer, const bool& running)
   }
 }
 
-void parseCommandLineInput(char* inputBuffer, int bytesReceived, BYTE* parsedBuffer)
+char alphaToCtrlCode(const char& alpha) { return tolower(alpha - 0x60); }
+
+int parseCommandLineInput(char* buffer)
 {
-    for (int i = 0; i < bytesReceived; ++i)
+  int read, write = 0;
+  for (/*read, write*/; buffer[read] != NULL; ++read, ++write)
+  {
+    switch (buffer[read])
     {
-      switch (inputBuffer[i])
-      {
-      case '^':
-        if (isalpha(inputBuffer[i+1]))
-        {
-          parsedBuffer[i] = (BYTE)(tolower(inputBuffer[i+1]) - 0x60);
-          ++i;
-        }
-        --bytesReceived;
-        break;
-      case '@':
-        parsedBuffer[i] = 0x00;
-        break;
-      default:
-        parsedBuffer[i] = (BYTE)inputBuffer[i];
-        break;
-      }
+    case '^':
+      if (!(buffer[read+1] != NULL && isalpha(buffer[read+1]))) break;
+      ++read;
+      buffer[write] = alphaToCtrlCode(buffer[read]);
+      break;
+    case '@':
+      buffer[write] = 0x00;
+      break;
+    default:
+      buffer[write] = buffer[read];
+      break;
     }
-    parsedBuffer[bytesReceived] = '\r';
+  }
+  buffer[write] = '\r';
+  return write;
 }
 
 void readFromCommandLine(PiTracker& tracker, const bool& running)
 {
   char localBuffer[BUFFERSIZE];
-  int bytesReceived = 0;
-  BYTE parsedBuffer[BUFFERSIZE];
+  int bytesToSend = 0;
   while(running) 
   {
     std::cin.getline(localBuffer, BUFFERSIZE);
-    bytesReceived = std::cin.gcount();
-    parseCommandLineInput(localBuffer, bytesReceived, parsedBuffer);
-    tracker.WriteTrkData(parsedBuffer,bytesReceived); 
+    bytesToSend = parseCommandLineInput(localBuffer, std::cin.gcount());
+    tracker.WriteTrkData((void*)localBuffer, bytesToSend); 
   }
 }

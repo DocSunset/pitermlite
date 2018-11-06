@@ -31,6 +31,7 @@ along with Tracker Terminal.  If not, see <http://www.gnu.org/licenses/>.
 #define PINGPONG_H_
 
 #include <thread>
+#include <mutex>
 #define NUMBUFS   10
 
 class PingPong {
