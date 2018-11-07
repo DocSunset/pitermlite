@@ -3,10 +3,11 @@ SDIR = src
 TDIR = test
 
 # note to self: $(patsubst pattern, replacement, texttosearch)
-FILES = PiTermLite PiTracker PingPong
-HEADERS = $(patsubst %, $(IDIR)/%.h, $(FILES))
-OBJECTS = $(patsubst %, $(SDIR)/%.o, $(FILES))
-TESTS = parseArgs
+NAMES = PiTermLite PiTracker PingPong
+HEADERS = $(patsubst %, $(IDIR)/%.h, $(NAMES))
+OBJECTS = $(patsubst %, $(SDIR)/%.o, $(NAMES))
+TESTNAMES = argumentsParser commandParser writeThread
+TESTS = $(patsubst %, $(TDIR)/%.test, $(TESTNAMES))
 
 CXX = g++
 CXXFLAGS = -Wall -std=c++14
@@ -23,12 +24,18 @@ LIBS = -lusb-1.0 -lpthread
 pitermlite: $(SDIR)/main.o $(OBJECTS)
 	$(CXX) -o $@ $^ $(INCLUDES) $(CXXFLAGS) $(LIBS) 
 
-$(TDIR)/%.test: $(TDIR)/%.cpp $(OBJECTS)
-	$(CXX) -g -O0 -o $@ $^ $(INCLUDES) $(CXXFLAGS) $(LIBS) 
-
-.Phony: clean
+.Phony: clean test runtests
 
 clean:
 	rm $(SDIR)/*.o
 	rm $(TDIR)/*.test
 	rm pitermlite
+
+$(TDIR)/%.test: $(TDIR)/%.cpp $(OBJECTS)
+	$(CXX) -o $@ $^ $(INCLUDES) $(CXXFLAGS) $(LIBS) 
+
+runtests:
+	for i in $(TESTS); do echo Running $$i; if ! ./$$i; then exit 1; fi; done
+
+test: $(TESTS) runtests
+

@@ -145,7 +145,7 @@ void readFromTracker(PiTracker& tracker, PingPong& buffer, const bool& running)
       localBuffer[bytesReceived] = 0x00; // null terminate localBuffer
       do {
         bytesWritten = buffer.WritePP(localBuffer, bytesReceived);
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       } while (bytesWritten == 0);
     }
   }
@@ -160,9 +160,7 @@ void writeToCommandLine(PingPong& buffer, const bool& running)
     bytesReceived = buffer.ReadPP(localBuffer);
     if (bytesReceived)
     {
-      for (int i = 0; i < bytesReceived; ++i) 
-        std::cout << localBuffer[i];
-      std::cout << std::flush;
+        std::cout << localBuffer << std::flush;
     }
   }
 }
@@ -171,13 +169,14 @@ char alphaToCtrlCode(const char& alpha) { return tolower(alpha - 0x60); }
 
 int parseCommandLineInput(char* buffer)
 {
-  int read, write = 0;
-  for (/*read, write*/; buffer[read] != NULL; ++read, ++write)
+  int read = 0;
+  int write = 0;
+  for (/*read, write*/; buffer[read] != 0x00; ++read, ++write)
   {
     switch (buffer[read])
     {
     case '^':
-      if (!(buffer[read+1] != NULL && isalpha(buffer[read+1]))) break;
+      if (!(buffer[read+1] != 0x00 && isalpha(buffer[read+1]))) break;
       ++read;
       buffer[write] = alphaToCtrlCode(buffer[read]);
       break;
@@ -190,6 +189,7 @@ int parseCommandLineInput(char* buffer)
     }
   }
   buffer[write] = '\r';
+  ++write;
   return write;
 }
 
@@ -200,7 +200,7 @@ void readFromCommandLine(PiTracker& tracker, const bool& running)
   while(running) 
   {
     std::cin.getline(localBuffer, BUFFERSIZE);
-    bytesToSend = parseCommandLineInput(localBuffer, std::cin.gcount());
+    bytesToSend = parseCommandLineInput(localBuffer);
     tracker.WriteTrkData((void*)localBuffer, bytesToSend); 
   }
 }
