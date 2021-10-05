@@ -1,3 +1,9 @@
+This is a pared down command line version of PiTerm. I basically stripped out GTK so that the app directly takes text input from standard input and outputs text on standard output.
+
+This project is not currently maintained. You are free to fork and adapt it for your own purposes in accordance with the original license.
+
+---
+
 Instructions on how to build and install the Polhemus Terminal Tracker (PiTerm).  
 
 The Polhemus Terminal Tracker is a GTK+ application that requires GTK+-3.0 or greater.  In order to build and install this application a user may have to acquire the GTK+ development package.  This should be obtained through your Linux distribution package manager if possible.  The package will probably end with -dev (Debian,Ubuntu) or -devel (Red Hat,Fedora).  eg. libgtk3.0-dev or gtk+-devel.  If it is not possible to get a distribution package then GTK can be obtained at http://www.gtk.org/download.html.
