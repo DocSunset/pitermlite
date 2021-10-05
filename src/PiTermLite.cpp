@@ -124,7 +124,7 @@ void waitForResponseFromTracker(PiTracker& tracker)
   BYTE localBuffer[BUFFERSIZE];
   int bytesReceived = 0;
   do { // keep sending an invalid command until a response is received
-    tracker.WriteTrkData((void *)'\r', 1);
+    tracker.WriteTrkData((void *)"\r", 1);
     std::this_thread::sleep_for(std::chrono::seconds(1));
     bytesReceived = tracker.ReadTrkData(localBuffer, BUFFERSIZE);
     } while (bytesReceived == 0);
@@ -160,17 +160,18 @@ void writeToCommandLine(PingPong& buffer, const bool& running)
     bytesReceived = buffer.ReadPP(localBuffer);
     if (bytesReceived)
     {
-        std::cout << localBuffer << std::flush;
+        std::cout.write((const char *)localBuffer, bytesReceived);
     }
   }
 }
 
-char alphaToCtrlCode(const char& alpha) { return tolower(alpha - 0x60); }
+char alphaToCtrlCode(const char& alpha) { return tolower(alpha) - 0x60; }
 
 int parseCommandLineInput(char* buffer)
 {
   int read = 0;
   int write = 0;
+  bool trailing_p = false;
   for (/*read, write*/; buffer[read] != 0x00; ++read, ++write)
   {
     switch (buffer[read])
@@ -183,11 +184,17 @@ int parseCommandLineInput(char* buffer)
     case '@':
       buffer[write] = 0x00;
       break;
+    case 'p':
+      if (buffer[read+1] == 0x00) trailing_p = true;
+      // fall through to default
     default:
       buffer[write] = buffer[read];
       break;
     }
   }
+  if (trailing_p) 
+    // p is not terminated with a carriage return
+    return write; 
   buffer[write] = '\r';
   ++write;
   return write;
@@ -202,5 +209,6 @@ void readFromCommandLine(PiTracker& tracker, const bool& running)
     std::cin.getline(localBuffer, BUFFERSIZE);
     bytesToSend = parseCommandLineInput(localBuffer);
     tracker.WriteTrkData((void*)localBuffer, bytesToSend); 
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 }

@@ -56,7 +56,11 @@ int main(int argc, char** argv)
     readFromCommandLine(tracker, running);
   });
   
-  while (running) running = runflag;
+  while (running)
+  {
+    running = runflag;
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
 
   readThread.join();
   outputThread.join();
